@@ -61,6 +61,8 @@ def train_agent(job_name, agent,
                 niter = 101,
                 gamma = 0.995,
                 gae_lambda = None,
+                policy_dir='iterations',
+                logs_dir='logs',
                 num_cpu = 1,
                 sample_mode = 'trajectories',
                 num_traj = 50,
@@ -75,8 +77,8 @@ def train_agent(job_name, agent,
         os.mkdir(job_name)
     previous_dir = os.getcwd()
     os.chdir(job_name) # important! we are now in the directory to save data
-    if os.path.isdir('iterations') == False: os.mkdir('iterations')
-    if os.path.isdir('logs') == False and agent.save_logs == True: os.mkdir('logs')
+    if os.path.isdir(policy_dir) == False: os.mkdir(policy_dir)
+    if os.path.isdir(logs_dir) == False and agent.save_logs == True: os.mkdir(logs_dir)
     best_policy = copy.deepcopy(agent.policy)
     best_perf = -1e8
     train_curve = best_perf*np.ones(niter)
@@ -86,8 +88,8 @@ def train_agent(job_name, agent,
     # Load from any existing checkpoint, policy, statistics, etc.
     # Why no checkpointing.. :(
     i_start = _load_latest_policy_and_logs(agent,
-                                           policy_dir='iterations',
-                                           logs_dir='logs')
+                                           policy_dir=policy_dir,
+                                           logs_dir=logs_dir)
     if i_start:
         print("Resuming from an existing job folder ...")
 
@@ -127,13 +129,13 @@ def train_agent(job_name, agent,
 
         if i % save_freq == 0 and i > 0:
             if agent.save_logs:
-                agent.logger.save_log('logs/')
-                make_train_plots(log=agent.logger.log, keys=plot_keys, save_loc='logs/')
+                agent.logger.save_log(f'{logs_dir}/')
+                make_train_plots(log=agent.logger.log, keys=plot_keys, save_loc=f'{logs_dir}/')
             policy_file = 'policy_%i.pickle' % i
             baseline_file = 'baseline_%i.pickle' % i
-            pickle.dump(agent.policy, open('iterations/' + policy_file, 'wb'))
-            pickle.dump(agent.baseline, open('iterations/' + baseline_file, 'wb'))
-            pickle.dump(best_policy, open('iterations/best_policy.pickle', 'wb'))
+            pickle.dump(agent.policy, open(policy_dir + policy_file, 'wb'))
+            pickle.dump(agent.baseline, open(policy_dir + baseline_file, 'wb'))
+            pickle.dump(best_policy, open(f'{policy_dir}/best_policy.pickle', 'wb'))
             # pickle.dump(agent.global_status, open('iterations/global_status.pickle', 'wb'))
 
         # print results to console
@@ -153,8 +155,8 @@ def train_agent(job_name, agent,
             print(tabulate(print_data))
 
     # final save
-    pickle.dump(best_policy, open('iterations/best_policy.pickle', 'wb'))
+    pickle.dump(best_policy, open(f'{policy_dir}/best_policy.pickle', 'wb'))
     if agent.save_logs:
-        agent.logger.save_log('logs/')
-        make_train_plots(log=agent.logger.log, keys=plot_keys, save_loc='logs/')
+        agent.logger.save_log(f'{logs_dir}/')
+        make_train_plots(log=agent.logger.log, keys=plot_keys, save_loc=f'{logs_dir}/')
     os.chdir(previous_dir)
